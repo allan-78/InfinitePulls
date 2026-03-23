@@ -6,6 +6,13 @@ const {
 } = require("../utils/Cloudinary");
 const Mailer = require("../utils/Mailer");
 const admin = require("../utils/firebaseAdmin");
+const { OAuth2Client } = require("google-auth-library");
+
+const googleClient = new OAuth2Client();
+const GOOGLE_WEB_CLIENT_ID =
+  process.env.GOOGLE_WEB_CLIENT_ID ||
+  process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ||
+  "311416409407-0723d495b5ohme2egqji7c7lfbek4g4k.apps.googleusercontent.com";
 
 const getBackendBaseUrl = (req) =>
   process.env.BACKEND_PUBLIC_URL || `${req.protocol}://${req.get("host")}`;
@@ -75,6 +82,35 @@ const mapFirebaseProvider = (provider) => {
   if (provider.includes("google")) return "google";
   if (provider.includes("facebook")) return "facebook";
   return null;
+};
+
+const verifyGoogleIdentityToken = async (idToken) => {
+  try {
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    return {
+      provider: mapFirebaseProvider(decodedToken.firebase?.sign_in_provider),
+      email: decodedToken.email,
+      uid: decodedToken.uid,
+      name: decodedToken.name || decodedToken.displayName,
+      picture: decodedToken.picture,
+      verified: decodedToken.email_verified !== false,
+    };
+  } catch (firebaseError) {
+    const ticket = await googleClient.verifyIdToken({
+      idToken,
+      audience: GOOGLE_WEB_CLIENT_ID,
+    });
+    const payload = ticket.getPayload();
+
+    return {
+      provider: "google",
+      email: payload?.email,
+      uid: payload?.sub,
+      name: payload?.name,
+      picture: payload?.picture,
+      verified: payload?.email_verified !== false,
+    };
+  }
 };
 
 // ========== REGISTER USER ==========
@@ -163,12 +199,10 @@ exports.registerUser = async (req, res) => {
         .status(400)
         .json({ success: false, message: "Email already exists" });
     }
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Registration failed. Please try again.",
-      });
+    res.status(500).json({
+      success: false,
+      message: "Registration failed. Please try again.",
+    });
   }
 };
 
@@ -415,19 +449,19 @@ exports.updateProfile = async (req, res) => {
 // ========== GOOGLE LOGIN ==========
 exports.firebaseGoogleAuth = async (req, res) => {
   try {
-    console.log("Google auth attempt via Firebase ID token");
+    console.log("Google auth attempt");
     const { idToken } = req.body;
 
     if (!idToken) {
       return res
         .status(400)
-        .json({ message: "Firebase idToken is required for Google login" });
+        .json({
+          message: "Google identity token is required for Google login",
+        });
     }
 
-    const decodedToken = await admin.auth().verifyIdToken(idToken);
-    const provider = mapFirebaseProvider(
-      decodedToken.firebase?.sign_in_provider,
-    );
+    const decodedToken = await verifyGoogleIdentityToken(idToken);
+    const provider = decodedToken.provider;
 
     if (provider && provider !== "google") {
       return res
@@ -437,7 +471,7 @@ exports.firebaseGoogleAuth = async (req, res) => {
 
     const email = decodedToken.email;
     const uid = decodedToken.uid;
-    const name = decodedToken.name || decodedToken.displayName;
+    const name = decodedToken.name;
     const picture = decodedToken.picture;
 
     if (!email)
@@ -466,11 +500,9 @@ exports.firebaseGoogleAuth = async (req, res) => {
     }
 
     if (user.isDeleted)
-      return res
-        .status(403)
-        .json({
-          message: "Your account has been deleted. Please contact support.",
-        });
+      return res.status(403).json({
+        message: "Your account has been deleted. Please contact support.",
+      });
     if (!user.isActive)
       return res
         .status(403)
@@ -480,23 +512,19 @@ exports.firebaseGoogleAuth = async (req, res) => {
     const userResponse = user.toObject();
     delete userResponse.password;
 
-    res
-      .status(200)
-      .json({
-        success: true,
-        token,
-        user: userResponse,
-        message: "Google authentication successful",
-      });
+    res.status(200).json({
+      success: true,
+      token,
+      user: userResponse,
+      message: "Google authentication successful",
+    });
   } catch (error) {
     console.error("GOOGLE AUTH ERROR:", error.response?.data || error.message);
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Google authentication failed",
-        error: error.message,
-      });
+    res.status(500).json({
+      success: false,
+      message: "Google authentication failed",
+      error: error.message,
+    });
   }
 };
 
@@ -554,11 +582,9 @@ exports.firebaseFacebookAuth = async (req, res) => {
     }
 
     if (user.isDeleted)
-      return res
-        .status(403)
-        .json({
-          message: "Your account has been deleted. Please contact support.",
-        });
+      return res.status(403).json({
+        message: "Your account has been deleted. Please contact support.",
+      });
     if (!user.isActive)
       return res
         .status(403)
@@ -568,26 +594,22 @@ exports.firebaseFacebookAuth = async (req, res) => {
     const userResponse = user.toObject();
     delete userResponse.password;
 
-    res
-      .status(200)
-      .json({
-        success: true,
-        token,
-        user: userResponse,
-        message: "Facebook authentication successful",
-      });
+    res.status(200).json({
+      success: true,
+      token,
+      user: userResponse,
+      message: "Facebook authentication successful",
+    });
   } catch (error) {
     console.error(
       "FACEBOOK AUTH ERROR:",
       error.response?.data || error.message,
     );
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Facebook authentication failed",
-        error: error.message,
-      });
+    res.status(500).json({
+      success: false,
+      message: "Facebook authentication failed",
+      error: error.message,
+    });
   }
 };
 
@@ -622,12 +644,10 @@ exports.forgotPassword = async (req, res) => {
       message,
     });
 
-    res
-      .status(200)
-      .json({
-        success: true,
-        message: `Password reset email sent to: ${user.email}`,
-      });
+    res.status(200).json({
+      success: true,
+      message: `Password reset email sent to: ${user.email}`,
+    });
   } catch (error) {
     console.error("❌ FORGOT PASSWORD ERROR:", error);
     res.status(500).json({ success: false, message: error.message });
@@ -689,12 +709,10 @@ exports.changePassword = async (req, res) => {
     const { currentPassword, newPassword } = req.body;
 
     if (!currentPassword || !newPassword) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Current and new passwords are required",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Current and new passwords are required",
+      });
     }
 
     // Fetch user with password
@@ -761,7 +779,7 @@ exports.verifyEmail = async (req, res) => {
 // ========== SAVE PUSH TOKEN ==========
 exports.savePushToken = async (req, res) => {
   try {
-    const { pushToken } = req.body;
+    const { pushToken, source = "unknown" } = req.body;
     const userId = req.user.id;
 
     console.log("📱 Saving push token for user:", userId);
@@ -786,25 +804,54 @@ exports.savePushToken = async (req, res) => {
       );
     }
 
-    // Save token to user - FIXED: Use findByIdAndUpdate with { new: true }
-    const updatedUser = await User.findByIdAndUpdate(
-      userId,
-      { pushToken: pushToken },
-      { new: true },
-    ).select("+pushToken"); // Explicitly select pushToken to verify
+    const existingUser = await User.findById(userId).select(
+      "+pushToken +pushTokenSource +pushTokenUpdatedAt",
+    );
+
+    if (!existingUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    const hasNativeTokenAlready =
+      existingUser.pushToken &&
+      existingUser.pushTokenSource &&
+      existingUser.pushTokenSource !== "expo-go";
+
+    if (
+      source === "expo-go" &&
+      hasNativeTokenAlready &&
+      existingUser.pushToken !== pushToken
+    ) {
+      return res.status(200).json({
+        success: true,
+        message:
+          "Native app push token already registered. Expo Go token ignored.",
+        token: existingUser.pushToken,
+        source: existingUser.pushTokenSource,
+      });
+    }
+
+    existingUser.pushToken = pushToken;
+    existingUser.pushTokenSource = source;
+    existingUser.pushTokenUpdatedAt = new Date();
+    await existingUser.save({ validateBeforeSave: false });
 
     console.log(`✅ Push token saved for user: ${userId}`);
     console.log(
       "Saved token in DB:",
-      updatedUser.pushToken
-        ? updatedUser.pushToken.substring(0, 20) + "..."
+      existingUser.pushToken
+        ? existingUser.pushToken.substring(0, 20) + "..."
         : "none",
     );
 
     res.status(200).json({
       success: true,
       message: "Push notification token saved successfully",
-      token: updatedUser.pushToken, // Return the saved token for verification
+      token: existingUser.pushToken,
+      source: existingUser.pushTokenSource,
     });
   } catch (error) {
     console.error("❌ Error saving push token:", error);
@@ -820,11 +867,15 @@ exports.savePushToken = async (req, res) => {
 exports.getPushToken = async (req, res) => {
   try {
     const userId = req.user.id;
-    const user = await User.findById(userId).select("+pushToken");
+    const user = await User.findById(userId).select(
+      "+pushToken +pushTokenSource +pushTokenUpdatedAt",
+    );
 
     res.status(200).json({
       success: true,
       pushToken: user?.pushToken || null,
+      pushTokenSource: user?.pushTokenSource || null,
+      pushTokenUpdatedAt: user?.pushTokenUpdatedAt || null,
     });
   } catch (error) {
     console.error("❌ Error getting push token:", error);
@@ -839,8 +890,30 @@ exports.getPushToken = async (req, res) => {
 exports.removePushToken = async (req, res) => {
   try {
     const userId = req.user.id;
+    const { pushToken } = req.body || {};
+    const user = await User.findById(userId).select(
+      "+pushToken +pushTokenSource +pushTokenUpdatedAt",
+    );
 
-    await User.findByIdAndUpdate(userId, { pushToken: null });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    if (pushToken && user.pushToken && user.pushToken !== pushToken) {
+      return res.status(200).json({
+        success: true,
+        message:
+          "Stored push token belongs to another app session. No change made.",
+      });
+    }
+
+    user.pushToken = null;
+    user.pushTokenSource = null;
+    user.pushTokenUpdatedAt = null;
+    await user.save({ validateBeforeSave: false });
 
     console.log(`✅ Push token removed for user: ${userId}`);
 

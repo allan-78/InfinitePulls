@@ -11,11 +11,7 @@ import { MaterialIcons as Icon } from "@expo/vector-icons";
 import Constants from "expo-constants";
 import * as AuthSession from "expo-auth-session";
 import * as WebBrowser from "expo-web-browser";
-import {
-  FacebookAuthProvider,
-  GoogleAuthProvider,
-  signInWithCredential,
-} from "firebase/auth";
+import { FacebookAuthProvider, signInWithCredential } from "firebase/auth";
 import { useDispatch } from "react-redux";
 import { socialLogin } from "../../redux/actions/userActions";
 import { getFirebaseAuth, isFirebaseConfigured } from "../../config/firebase";
@@ -116,17 +112,7 @@ function GoogleSocialButton({ busyProvider, setBusyProvider }) {
             );
           }
 
-          const auth = getFirebaseAuth();
-          if (!auth) {
-            throw new Error(
-              "Firebase authentication is not available in this runtime.",
-            );
-          }
-
-          const credential = GoogleAuthProvider.credential(idToken);
-          const userCredential = await signInWithCredential(auth, credential);
-          const firebaseToken = await userCredential.user.getIdToken();
-          await dispatch(socialLogin("google", { idToken: firebaseToken }));
+          await dispatch(socialLogin("google", { idToken }));
         } catch (err) {
           if (err?.code === googleStatusCodes.SIGN_IN_CANCELLED) {
             return;

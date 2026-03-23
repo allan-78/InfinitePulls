@@ -1,7 +1,15 @@
 // backend/controllers/ManageOrderController.js
 const Order = require("../models/Order");
 const User = require("../models/User");
-const { sendPushNotification } = require("../utils/pushNotification");
+const { sendMultiplePushNotifications } = require("../utils/pushNotification");
+
+const getPreferredPushTargets = (user) => {
+  if (!user?.pushToken) {
+    return [];
+  }
+
+  return [user.pushToken];
+};
 
 // 🟢 Get all orders (Admin)
 exports.getAllOrders = async (req, res) => {
@@ -63,11 +71,11 @@ exports.updateOrderStatus = async (req, res) => {
       });
     }
 
-    // FIXED: Use populate with explicit field selection including +pushToken
+    // FIXED: Use populate with explicit field selection including hidden push token fields
     const order = await Order.findById(id)
       .populate({
         path: "user",
-        select: "name email +pushToken",
+        select: "name email +pushToken +pushTokenSource",
       })
       .populate("orderItems.product", "name");
 
@@ -83,6 +91,7 @@ exports.updateOrderStatus = async (req, res) => {
       name: order.user?.name,
       email: order.user?.email,
       hasPushToken: !!order.user?.pushToken,
+      pushTokenSource: order.user?.pushTokenSource || "none",
       pushTokenValue: order.user?.pushToken
         ? `${order.user.pushToken.substring(0, 20)}...`
         : "none",
@@ -148,11 +157,23 @@ exports.updateOrderStatus = async (req, res) => {
           notificationBody = `🎉 Your order #${order._id.toString().slice(-8)} has been delivered.`;
         }
 
-        await sendPushNotification(
-          order.user.pushToken,
-          `Order ${status}`,
-          notificationBody,
-          notificationData,
+        const targets = getPreferredPushTargets(order.user);
+
+        if (!targets.length) {
+          console.log("ℹ️ No preferred push target available after filtering.");
+          return;
+        }
+
+        await sendMultiplePushNotifications(
+          targets.map((token) => ({
+            to: token,
+            sound: "default",
+            title: `Order ${status}`,
+            body: notificationBody,
+            data: notificationData,
+            priority: "high",
+            channelId: "order-updates",
+          })),
         );
 
         console.log(
@@ -165,7 +186,11 @@ exports.updateOrderStatus = async (req, res) => {
           pushError.message.includes("Invalid Expo push token") &&
           order.user?._id
         ) {
-          await User.findByIdAndUpdate(order.user._id, { pushToken: null });
+          await User.findByIdAndUpdate(order.user._id, {
+            pushToken: null,
+            pushTokenSource: null,
+            pushTokenUpdatedAt: null,
+          });
         }
       }
     });

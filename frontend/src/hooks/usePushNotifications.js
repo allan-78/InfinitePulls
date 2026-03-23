@@ -2,11 +2,30 @@
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
 import Constants from "expo-constants";
+import * as Application from "expo-application";
 import { Platform } from "react-native";
 import axios from "axios";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getToken } from "../utils/helper";
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+export const DEVICE_PUSH_TOKEN_KEY = "@infinitepulls_device_push_token";
+
+export async function getStoredDevicePushToken() {
+  try {
+    return await AsyncStorage.getItem(DEVICE_PUSH_TOKEN_KEY);
+  } catch (error) {
+    return null;
+  }
+}
+
+export async function clearStoredDevicePushToken() {
+  try {
+    await AsyncStorage.removeItem(DEVICE_PUSH_TOKEN_KEY);
+  } catch (error) {
+    console.log("Failed to clear stored device push token:", error?.message);
+  }
+}
 
 export async function registerForPushNotificationsAsync() {
   console.log("========== PUSH NOTIFICATION REGISTRATION START ==========");
@@ -107,6 +126,7 @@ export async function registerForPushNotificationsAsync() {
 
     const token = tokenData.data;
     console.log("✅ Generated Expo push token:", token);
+    await AsyncStorage.setItem(DEVICE_PUSH_TOKEN_KEY, token);
 
     // Step 6: Get auth token again
     console.log("Step 6: Getting auth token for backend...");
@@ -125,7 +145,12 @@ export async function registerForPushNotificationsAsync() {
 
     const response = await axios.post(
       backendUrl,
-      { pushToken: token },
+      {
+        pushToken: token,
+        source: Constants.appOwnership === "expo" ? "expo-go" : "native-app",
+        platform: Platform.OS,
+        applicationId: Application.applicationId || null,
+      },
       {
         headers: {
           Authorization: `Bearer ${currentAuthToken}`,

@@ -13,8 +13,11 @@ import {
   getToken,
   logout as helperLogout,
 } from "../../utils/helper";
-import { registerForPushNotificationsAsync } from "../../hooks/usePushNotifications";
-import { Alert } from "react-native";
+import {
+  clearStoredDevicePushToken,
+  getStoredDevicePushToken,
+  registerForPushNotificationsAsync,
+} from "../../hooks/usePushNotifications";
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -105,8 +108,10 @@ export const register = (userData) => async (dispatch) => {
 export const logout = () => async (dispatch) => {
   try {
     const token = await getToken();
+    const devicePushToken = await getStoredDevicePushToken();
     if (token) {
       await axios.delete(`${BACKEND_URL}/api/v1/users/push-token`, {
+        data: devicePushToken ? { pushToken: devicePushToken } : undefined,
         headers: { Authorization: `Bearer ${token}` },
       });
     }
@@ -117,6 +122,7 @@ export const logout = () => async (dispatch) => {
     );
   }
 
+  await clearStoredDevicePushToken();
   await helperLogout();
   dispatch({ type: USER_LOGOUT });
 };
