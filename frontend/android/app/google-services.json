@@ -12,7 +12,20 @@
           "package_name": "com.infinitepulls.app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "311416409407-416cufgd7jq2abqmu2a3gb9mtnjeit1i.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.infinitepulls.app",
+            "certificate_hash": "1579e20be404ddc4e895fea46ceb24f25cf3a9cf"
+          }
+        },
+        {
+          "client_id": "311416409407-gba3sld856r6n1ffls3ob9n9kclqda09.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyAhprRzx8tmuVg-fd3E_P2yduxdcodSLiM"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "311416409407-0723d495b5ohme2egqji7c7lfbek4g4k.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
