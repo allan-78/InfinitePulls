@@ -1,0 +1,5 @@
+backend/node_modules/
+backend/config/.env
+frontend/
+.vscode/
+*.log
