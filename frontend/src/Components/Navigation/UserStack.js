@@ -11,6 +11,7 @@ import Checkout from '../UserScreen/Checkout';
 import OrderSuccess from '../UserScreen/Orders/OrderSuccess';
 import OrderHistory from '../UserScreen/Orders/OrderHistory';
 import OrderDetails from '../UserScreen/Orders/OrderDetails';
+import AIChatbot from '../UserScreen/AIChatbot';
 
 const Stack = createNativeStackNavigator();
 
@@ -31,6 +32,7 @@ export default function UserStack() {
         <Stack.Screen name="Cart" component={Cart} />
         <Stack.Screen name="Marketplace" component={Marketplace} />
         <Stack.Screen name="Checkout" component={Checkout} />
+        <Stack.Screen name="AIChatbot" component={AIChatbot} />
         <Stack.Screen name="OrderSuccess" component={OrderSuccess} />
         <Stack.Screen name="OrderHistory" component={OrderHistory} />
         <Stack.Screen name="OrderDetails" component={OrderDetails} />

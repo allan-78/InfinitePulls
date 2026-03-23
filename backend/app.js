@@ -58,6 +58,7 @@ const manageOrderRoutes = require('./routes/ManageOrder');
 const reviewRoutes = require('./routes/Review'); 
 const manageReviewRoutes = require('./routes/ManageReview'); 
 const salesAnalyticsRoutes = require('./routes/SalesAnalytics');
+const assistantRoutes = require('./routes/Assistant');
 
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/', productRoutes);
@@ -69,6 +70,7 @@ app.use('/api/v1/', manageOrderRoutes);
 app.use('/api/v1/', reviewRoutes);
 app.use('/api/v1/', manageReviewRoutes);
 app.use('/api/v1/', salesAnalyticsRoutes);
+app.use('/api/v1/assistant', assistantRoutes);
 
 // ========== HEALTH CHECK ==========
 app.get('/api/v1/health', (req, res) => {

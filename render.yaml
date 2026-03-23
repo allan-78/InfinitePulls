@@ -30,6 +30,10 @@ services:
         sync: false
       - key: APP_NAME
         value: Infinite Pulls
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        value: openai/gpt-oss-20b
       - key: SMTP_HOST
         sync: false
       - key: SMTP_PORT

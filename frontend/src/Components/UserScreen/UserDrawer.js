@@ -249,6 +249,12 @@ const UserDrawer = ({
       icon: "person-circle-outline",
       screen: "Profile",
     },
+    {
+      id: "assistant",
+      label: "AI Assistant",
+      icon: "chatbubble-ellipses-outline",
+      screen: "AIChatbot",
+    },
     ...(user?.role === "admin"
       ? [
           {
