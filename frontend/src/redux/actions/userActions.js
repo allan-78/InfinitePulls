@@ -96,6 +96,20 @@ export const register = (userData) => async (dispatch) => {
 
 // Logout Action
 export const logout = () => async (dispatch) => {
+  try {
+    const token = await getToken();
+    if (token) {
+      await axios.delete(`${BACKEND_URL}/api/v1/users/push-token`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    }
+  } catch (error) {
+    console.log(
+      "Push token cleanup skipped during logout:",
+      error.response?.data?.message || error.message
+    );
+  }
+
   await helperLogout();
   dispatch({ type: USER_LOGOUT });
 };

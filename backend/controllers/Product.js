@@ -91,7 +91,7 @@ const notifyDiscountDrop = async (product) => {
     const users = await User.find({
       pushToken: { $exists: true, $ne: null },
       isActive: true,
-    }).select('pushToken');
+    }).select('+pushToken');
 
     const title = 'New Card Deal Dropped';
     const body = `${product.name} is now ${discountPercent}% OFF for PHP ${product.discountedPrice}`;

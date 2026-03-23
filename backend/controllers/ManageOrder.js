@@ -67,7 +67,7 @@ exports.updateOrderStatus = async (req, res) => {
     const order = await Order.findById(id)
       .populate({
         path: "user",
-        select: "name email pushToken", // Added + prefix to override schema select:false
+        select: "name email +pushToken",
       })
       .populate("orderItems.product", "name");
 

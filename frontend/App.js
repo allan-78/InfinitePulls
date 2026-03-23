@@ -7,6 +7,7 @@ import Constants from "expo-constants";
 import * as Notifications from "expo-notifications";
 import AppNavigator from "./src/Components/Navigation/AppNavigator";
 import { getToken } from "./src/utils/helper";
+import { registerForPushNotificationsAsync } from "./src/hooks/usePushNotifications";
 import * as SplashScreen from "expo-splash-screen";
 import * as Font from "expo-font";
 import {
@@ -124,6 +125,13 @@ export default function App() {
         console.log("Failed to get push token for push notification!");
         return;
       }
+
+      const authToken = await getToken();
+      if (authToken) {
+        setTimeout(async () => {
+          await registerForPushNotificationsAsync();
+        }, 1200);
+      }
     } catch (error) {
       console.error("Error setting up notifications:", error);
     }
@@ -186,14 +194,37 @@ export default function App() {
       // Navigate to product details
       if (navigationRef.current) {
         setTimeout(() => {
-          navigationRef.current?.navigate("SingleProduct", {
-            productId: data.productId,
-            fromNotification: true,
+          navigationRef.current?.navigate("MainApp", {
+            screen: "SingleProduct",
+            params: {
+              productId: data.productId,
+              fromNotification: true,
+            },
           });
         }, 500);
       }
     }
   };
+
+  useEffect(() => {
+    if (!appIsReady) {
+      return;
+    }
+
+    const syncLaunchNotification = async () => {
+      try {
+        const response = await Notifications.getLastNotificationResponseAsync();
+        if (response?.notification) {
+          handleNotificationResponse(response);
+        }
+      } catch (error) {
+        console.warn("Failed to inspect launch notification:", error);
+      }
+    };
+
+    const timer = setTimeout(syncLaunchNotification, 900);
+    return () => clearTimeout(timer);
+  }, [appIsReady]);
 
   if (!appIsReady) {
     return null; // Splash screen is showing
