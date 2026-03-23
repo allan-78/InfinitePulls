@@ -8,6 +8,9 @@
       "developmentClient": true,
       "distribution": "internal",
       "credentialsSource": "local",
+      "env": {
+        "EXPO_USE_COMMUNITY_AUTOLINKING": "1"
+      },
       "android": {
         "buildType": "apk"
       }
@@ -15,11 +18,17 @@
     "preview": {
       "distribution": "internal",
       "credentialsSource": "local",
+      "env": {
+        "EXPO_USE_COMMUNITY_AUTOLINKING": "1"
+      },
       "android": {
         "buildType": "apk"
       }
     },
     "production": {
+      "env": {
+        "EXPO_USE_COMMUNITY_AUTOLINKING": "1"
+      },
       "android": {
         "buildType": "app-bundle"
       }
