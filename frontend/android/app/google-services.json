@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "311416409407",
+    "project_id": "card-ecommerce-9f829",
+    "storage_bucket": "card-ecommerce-9f829.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:311416409407:android:92da9c2444c2c0f882978a",
+        "android_client_info": {
+          "package_name": "com.infinitepulls.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAhprRzx8tmuVg-fd3E_P2yduxdcodSLiM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

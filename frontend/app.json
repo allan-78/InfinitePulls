@@ -1,0 +1,72 @@
+{
+  "expo": {
+    "name": "infinitePulls",
+    "slug": "infinitepulls-app",
+    "scheme": "infinitepulls",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.infinitepulls.app",
+      "infoPlist": {
+        "UIBackgroundModes": ["remote-notification"]
+      }
+    },
+    "android": {
+      "package": "com.infinitepulls.app",
+      "googleServicesFile": "./android/app/google-services.json",
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "permissions": [
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.VIBRATE",
+        "android.permission.WAKE_LOCK",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.RECORD_AUDIO"
+      ],
+      "useNextNotificationsApi": true
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-sqlite",
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Infinite Pulls to access your photos so you can upload a collector profile picture.",
+          "cameraPermission": "Allow Infinite Pulls to use your camera so you can take a collector profile picture."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#f39c12",
+          "mode": "production"
+        }
+      ],
+      "@react-native-community/datetimepicker",
+      "expo-web-browser",
+      "@react-native-google-signin/google-signin"
+    ],
+    "owner": "allanmonforte",
+    "extra": {
+      "eas": {
+        "projectId": "7757ebc5-3bc2-46d1-99ce-1f4c78eae73f"
+      }
+    }
+  }
+}
