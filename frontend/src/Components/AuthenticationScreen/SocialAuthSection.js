@@ -30,7 +30,9 @@ try {
 const GoogleSignin = googleSigninModule?.GoogleSignin ?? null;
 const googleStatusCodes = googleSigninModule?.statusCodes ?? {};
 
-const expoProxyProject = "@allanmonforte/infinitepulls-app";
+const expoOwner = Constants.expoConfig?.owner || "allanmonforte123s-organization";
+const expoSlug = Constants.expoConfig?.slug || "infinitepulls";
+const expoProxyProject = `@${expoOwner}/${expoSlug}`;
 const isExpoGo = Constants.appOwnership === "expo";
 const expoRedirectUri = isExpoGo
   ? `https://auth.expo.io/${expoProxyProject}`

@@ -2,8 +2,11 @@ node_modules/
 .expo/
 dist/
 android/.gradle/
+android/.kotlin/
 android/app/build/
 .env
 .env.*
+credentials.json
+credentials/
 *.log
 .DS_Store

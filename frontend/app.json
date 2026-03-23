@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "infinitePulls",
-    "slug": "infinitepulls-app",
+    "slug": "infinitepulls",
     "scheme": "infinitepulls",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -16,7 +16,9 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.infinitepulls.app",
       "infoPlist": {
-        "UIBackgroundModes": ["remote-notification"]
+        "UIBackgroundModes": [
+          "remote-notification"
+        ]
       }
     },
     "android": {
@@ -62,10 +64,10 @@
       "expo-web-browser",
       "@react-native-google-signin/google-signin"
     ],
-    "owner": "allanmonforte",
+    "owner": "allanmonforte123s-organization",
     "extra": {
       "eas": {
-        "projectId": "7757ebc5-3bc2-46d1-99ce-1f4c78eae73f"
+        "projectId": "e3b38999-2085-4508-910c-528ceaf1bc87"
       }
     }
   }
