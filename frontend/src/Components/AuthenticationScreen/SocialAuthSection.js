@@ -50,8 +50,8 @@ const facebookDiscovery = {
 
 const hasGoogleClientId = Boolean(
   process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ||
-    process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ||
-    process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID
+  process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ||
+  process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
 );
 const hasNativeGoogleSignin = Boolean(GoogleSignin);
 
@@ -67,8 +67,6 @@ function GoogleSocialButton({ busyProvider, setBusyProvider }) {
 
     GoogleSignin.configure({
       webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || undefined,
-      androidClientId:
-        process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || undefined,
       iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || undefined,
       offlineAccess: false,
       profileImageSize: 120,
@@ -83,14 +81,14 @@ function GoogleSocialButton({ busyProvider, setBusyProvider }) {
         if (isExpoGo) {
           Alert.alert(
             "Google Login Needs A Build",
-            "Google Sign-In now uses the native package. Test it in a development build or APK instead of Expo Go."
+            "Google Sign-In now uses the native package. Test it in a development build or APK instead of Expo Go.",
           );
           return;
         }
         if (!hasNativeGoogleSignin) {
           Alert.alert(
             "Google Module Missing",
-            "RNGoogleSignin is not in this app build yet. Rebuild and reinstall the development build or APK after adding the native package."
+            "RNGoogleSignin is not in this app build yet. Rebuild and reinstall the development build or APK after adding the native package.",
           );
           return;
         }
@@ -100,16 +98,28 @@ function GoogleSocialButton({ busyProvider, setBusyProvider }) {
             showPlayServicesUpdateDialog: true,
           });
           const response = await GoogleSignin.signIn();
-          const idToken = response?.data?.idToken || response?.idToken || null;
+
+          if (response?.type && response.type !== "success") {
+            return;
+          }
+
+          let idToken = response?.data?.idToken || response?.idToken || null;
 
           if (!idToken) {
-            return;
+            const tokenResponse = await GoogleSignin.getTokens();
+            idToken = tokenResponse?.idToken || null;
+          }
+
+          if (!idToken) {
+            throw new Error(
+              "Google did not return an ID token. Check the Google web client ID and Firebase Android SHA-1/SHA-256 setup for this APK.",
+            );
           }
 
           const auth = getFirebaseAuth();
           if (!auth) {
             throw new Error(
-              "Firebase authentication is not available in this runtime."
+              "Firebase authentication is not available in this runtime.",
             );
           }
 
@@ -125,8 +135,12 @@ function GoogleSocialButton({ busyProvider, setBusyProvider }) {
           Alert.alert(
             "Google Login Failed",
             err.response?.data?.message ||
-              err.message ||
-              "Unable to continue with Google."
+              (String(err?.message || "")
+                .toLowerCase()
+                .includes("developer_error")
+                ? "Google returned developer_error. The APK signing SHA-1/SHA-256 for this build still needs to be added to the Firebase Android app for com.infinitepulls.app."
+                : err.message) ||
+              "Unable to continue with Google.",
           );
         } finally {
           setBusyProvider(null);
@@ -158,7 +172,7 @@ function FacebookSocialButton({ busyProvider, setBusyProvider }) {
         display: "popup",
       },
     },
-    facebookDiscovery
+    facebookDiscovery,
   );
 
   useEffect(() => {
@@ -172,7 +186,7 @@ function FacebookSocialButton({ busyProvider, setBusyProvider }) {
         const auth = getFirebaseAuth();
         if (!auth) {
           throw new Error(
-            "Firebase authentication is not available in this runtime."
+            "Firebase authentication is not available in this runtime.",
           );
         }
         const accessToken =
@@ -181,7 +195,7 @@ function FacebookSocialButton({ busyProvider, setBusyProvider }) {
 
         if (!accessToken) {
           throw new Error(
-            "Facebook did not return an access token. Check the Facebook app settings and redirect URIs."
+            "Facebook did not return an access token. Check the Facebook app settings and redirect URIs.",
           );
         }
 
@@ -194,7 +208,7 @@ function FacebookSocialButton({ busyProvider, setBusyProvider }) {
           "Facebook Login Failed",
           err.response?.data?.message ||
             err.message ||
-            "Unable to continue with Facebook."
+            "Unable to continue with Facebook.",
         );
       } finally {
         setBusyProvider(null);
@@ -230,7 +244,7 @@ export default function SocialAuthSection({ title = "Or continue with" }) {
 
   const showSocialLogin = useMemo(
     () => isFirebaseConfigured && (hasGoogleClientId || hasFacebookClientId),
-    []
+    [],
   );
 
   if (!showSocialLogin) {

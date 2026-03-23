@@ -17,6 +17,7 @@ import AdminStack from "./AdminStack";
 import AuthSuccessTransition from "../AuthenticationScreen/AuthSuccessTransition";
 import OrderNotification from "../UserScreen/Notification/OrderNotification";
 import OrderDetails from "../UserScreen/Orders/OrderDetails";
+import { registerForPushNotificationsAsync } from "../../hooks/usePushNotifications";
 import {
   clearStoredAuth,
   getAppViewMode,
@@ -39,7 +40,25 @@ const AppNavigator = forwardRef((props, ref) => {
   const [showAuthSuccess, setShowAuthSuccess] = useState(false);
   const [appViewMode, setAppViewMode] = useState("user");
   const authSuccessTimerRef = useRef(null);
+  const pushRegistrationTimerRef = useRef(null);
   const currentUserRef = useRef(null);
+
+  const schedulePushRegistration = () => {
+    if (pushRegistrationTimerRef.current) {
+      clearTimeout(pushRegistrationTimerRef.current);
+    }
+
+    pushRegistrationTimerRef.current = setTimeout(async () => {
+      try {
+        await registerForPushNotificationsAsync();
+      } catch (error) {
+        console.log(
+          "Push token registration retry skipped:",
+          error?.message || error,
+        );
+      }
+    }, 1800);
+  };
 
   // Expose navigation methods to parent component
   useImperativeHandle(ref, () => ({
@@ -104,6 +123,9 @@ const AppNavigator = forwardRef((props, ref) => {
           currentUserRef.current = currentUser;
           setUser(currentUser);
           setAppViewMode(storedAppViewMode);
+          if (currentUser) {
+            schedulePushRegistration();
+          }
         }
       } catch (error) {
         console.error("Error loading user:", error);
@@ -134,6 +156,9 @@ const AppNavigator = forwardRef((props, ref) => {
 
         currentUserRef.current = updatedUser;
         setUser(updatedUser);
+        if (updatedUser) {
+          schedulePushRegistration();
+        }
         setAppViewMode((currentMode) => {
           if (!updatedUser) {
             return "user";
@@ -159,6 +184,9 @@ const AppNavigator = forwardRef((props, ref) => {
       if (authSuccessTimerRef.current) {
         clearTimeout(authSuccessTimerRef.current);
       }
+      if (pushRegistrationTimerRef.current) {
+        clearTimeout(pushRegistrationTimerRef.current);
+      }
       unsubscribe();
       unsubscribeAppMode();
     };
@@ -168,10 +196,10 @@ const AppNavigator = forwardRef((props, ref) => {
   const MainAppScreen = !user
     ? AuthenticationStack
     : user.role === "admin"
-    ? appViewMode === "user"
-      ? UserStack
-      : AdminStack
-    : UserStack;
+      ? appViewMode === "user"
+        ? UserStack
+        : AdminStack
+      : UserStack;
   const mainAppKey =
     user?.role === "admin" ? `admin-${appViewMode}` : user ? "user" : "guest";
 

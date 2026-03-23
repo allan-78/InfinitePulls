@@ -8,11 +8,22 @@ import {
   USER_REGISTER_SUCCESS,
   USER_REGISTER_FAIL,
 } from "../constants/constants";
-import { authenticate, logout as helperLogout } from "../../utils/helper";
+import {
+  authenticate,
+  getToken,
+  logout as helperLogout,
+} from "../../utils/helper";
 import { registerForPushNotificationsAsync } from "../../hooks/usePushNotifications";
 import { Alert } from "react-native";
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+
+const schedulePushRegistration = () => {
+  setTimeout(async () => {
+    const token = await registerForPushNotificationsAsync();
+    console.log("Push token registration result:", token || "none");
+  }, 1400);
+};
 
 // Login Action
 export const login = (email, password) => async (dispatch) => {
@@ -30,7 +41,7 @@ export const login = (email, password) => async (dispatch) => {
     const { data } = await axios.post(
       `${BACKEND_URL}/api/v1/users/login`,
       { email, password },
-      config
+      config,
     );
 
     dispatch({
@@ -40,11 +51,7 @@ export const login = (email, password) => async (dispatch) => {
 
     // Save token and user info using existing helper
     await authenticate(data, async () => {
-      // Delay to ensure authentication is successful before trying to register push token
-      setTimeout(async () => {
-        const token = await registerForPushNotificationsAsync();
-        console.log("Push token registered successfully:", token);
-      }, 1000);
+      schedulePushRegistration();
     });
   } catch (error) {
     dispatch({
@@ -75,7 +82,7 @@ export const register = (userData) => async (dispatch) => {
     const { data } = await axios.post(
       `${BACKEND_URL}/api/v1/users/register`,
       userData,
-      config
+      config,
     );
 
     dispatch({
@@ -106,7 +113,7 @@ export const logout = () => async (dispatch) => {
   } catch (error) {
     console.log(
       "Push token cleanup skipped during logout:",
-      error.response?.data?.message || error.message
+      error.response?.data?.message || error.message,
     );
   }
 
@@ -142,13 +149,7 @@ export const socialLogin = (provider, socialData) => async (dispatch) => {
 
     // Save token and user info
     await authenticate(data, async () => {
-      setTimeout(async () => {
-        const token = await registerForPushNotificationsAsync();
-        console.log(
-          "Push token registered successfully for social auth:",
-          token
-        );
-      }, 1000);
+      schedulePushRegistration();
     });
   } catch (error) {
     dispatch({
