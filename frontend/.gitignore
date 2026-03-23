@@ -3,6 +3,7 @@ node_modules/
 dist/
 android/.gradle/
 android/.kotlin/
+android/build/
 android/app/build/
 .env
 .env.*
