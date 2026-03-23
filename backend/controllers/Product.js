@@ -2,7 +2,7 @@ const fs = require('fs');
 const Product = require('../models/Product');
 const Review = require('../models/Review');
 const { uploadToCloudinary, deleteFromCloudinary } = require('../utils/Cloudinary');
-const { sendPushNotification } = require('../utils/pushNotification');
+const { sendMultiplePushNotifications } = require('../utils/pushNotification');
 const User = require('../models/User');
 
 const safeUnlink = (path) => {
@@ -106,18 +106,23 @@ const notifyDiscountDrop = async (product) => {
       timestamp: new Date().toISOString(),
     };
 
-    for (const user of users) {
-      if (!user.pushToken) continue;
+    const messages = users
+      .filter((user) => Boolean(user.pushToken))
+      .map((user) => ({
+        to: user.pushToken,
+        sound: 'default',
+        title,
+        body,
+        data,
+        priority: 'high',
+        channelId: 'order-updates',
+      }));
 
-      try {
-        await sendPushNotification(user.pushToken, title, body, data);
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      } catch (error) {
-        if (error.message.includes('Invalid Expo push token')) {
-          await User.findByIdAndUpdate(user._id, { pushToken: null });
-        }
-      }
+    if (!messages.length) {
+      return;
     }
+
+    await sendMultiplePushNotifications(messages);
   } catch (error) {
     console.error('Discount notification error:', error.message);
   }
@@ -277,7 +282,11 @@ exports.updateProduct = async (req, res) => {
     }
 
     if (discountChanged && product.discountedPrice) {
-      await notifyDiscountDrop(product);
+      setImmediate(() => {
+        notifyDiscountDrop(product).catch((error) => {
+          console.error('Background discount notification error:', error.message);
+        });
+      });
     }
 
     res.status(200).json({ success: true, product });

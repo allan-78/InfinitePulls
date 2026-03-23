@@ -1,9 +1,6 @@
 // backend/controllers/ManageOrderController.js
 const Order = require("../models/Order");
 const User = require("../models/User");
-const sendEmail = require("../utils/Mailer");
-const { generateOrderEmailTemplate } = require("../utils/emailTemplate");
-const { generateReceiptPDF } = require("../utils/pdfGenerator");
 const { sendPushNotification } = require("../utils/pushNotification");
 
 // 🟢 Get all orders (Admin)
@@ -100,8 +97,20 @@ exports.updateOrderStatus = async (req, res) => {
 
     await order.save();
 
-    // Send push notification if user has token
-    if (order.user && order.user.pushToken) {
+    res.status(200).json({
+      success: true,
+      message: "Order status updated. Buyer phone notification queued.",
+      order,
+    });
+
+    if (!order.user || !order.user.pushToken) {
+      console.log(
+        `ℹ️ No push token found for user: ${order.user?.email || "unknown"}`,
+      );
+      return;
+    }
+
+    setImmediate(async () => {
       try {
         console.log(
           `📱 Attempting to send push notification for order #${order._id}`,
@@ -109,21 +118,18 @@ exports.updateOrderStatus = async (req, res) => {
 
         let notificationBody = `Your order #${order._id.toString().slice(-8)} status changed to ${status}`;
 
-        // Enhanced notification data with user information
-        let notificationData = {
+        const notificationData = {
           type: "ORDER_STATUS_UPDATE",
           orderId: order._id.toString(),
           orderNumber: order._id.toString().slice(-8),
-          status: status,
-          oldStatus: oldStatus,
+          status,
+          oldStatus,
           timestamp: new Date().toISOString(),
-          // Add user information to notification data
           user: {
             id: order.user._id.toString(),
             name: order.user.name,
             email: order.user.email,
           },
-          // Add order summary
           orderSummary: {
             totalAmount: order.totalPrice,
             itemCount: order.orderItems.reduce(
@@ -138,13 +144,11 @@ exports.updateOrderStatus = async (req, res) => {
           },
         };
 
-        // Special message for delivered orders
         if (status === "Delivered") {
-          notificationBody = `🎉 Your order #${order._id.toString().slice(-8)} has been delivered! Check your email for receipt.`;
+          notificationBody = `🎉 Your order #${order._id.toString().slice(-8)} has been delivered.`;
         }
 
-        // Send the push notification
-        const pushResult = await sendPushNotification(
+        await sendPushNotification(
           order.user.pushToken,
           `Order ${status}`,
           notificationBody,
@@ -154,10 +158,8 @@ exports.updateOrderStatus = async (req, res) => {
         console.log(
           `✅ Push notification sent successfully for order #${order._id}`,
         );
-        console.log("Push result:", pushResult);
       } catch (pushError) {
         console.error("❌ Failed to send push notification:", pushError);
-        console.error("Push error details:", pushError.stack);
         if (
           pushError.message &&
           pushError.message.includes("Invalid Expo push token") &&
@@ -165,65 +167,7 @@ exports.updateOrderStatus = async (req, res) => {
         ) {
           await User.findByIdAndUpdate(order.user._id, { pushToken: null });
         }
-        // Continue even if push fails - don't block the order update
       }
-    } else {
-      console.log(
-        `ℹ️ No push token found for user: ${order.user?.email || "unknown"}`,
-      );
-    }
-
-    // Send email notification for status change
-    try {
-      const emailTemplate = generateOrderEmailTemplate(
-        order,
-        order.user,
-        status,
-      );
-      const emailOptions = {
-        email: order.user.email,
-        subject: `Order ${status} - #${order._id}`,
-        message: emailTemplate,
-      };
-
-      // Only attach PDF for Delivered status
-      if (status === "Delivered") {
-        try {
-          console.log(`📄 Generating PDF receipt for order #${order._id}`);
-          const pdfBuffer = await generateReceiptPDF(order, order.user);
-
-          emailOptions.attachments = [
-            {
-              filename: `HarmoniaHub_Receipt_${order._id}.pdf`,
-              content: pdfBuffer,
-              contentType: "application/pdf",
-            },
-          ];
-          console.log(
-            `✅ PDF receipt generated and attached for order #${order._id}`,
-          );
-        } catch (pdfError) {
-          console.error("❌ Failed to generate PDF:", pdfError);
-        }
-      }
-
-      console.log(`📧 Sending ${status} email to: ${order.user.email}`);
-
-      // Small delay to ensure PDF is ready (if generated)
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      await sendEmail(emailOptions);
-      console.log(
-        `✅ Status update email sent for order #${order._id} to ${order.user.email}`,
-      );
-    } catch (emailError) {
-      console.error("❌ Failed to send email:", emailError);
-    }
-
-    res.status(200).json({
-      success: true,
-      message: "Order status updated and notifications sent.",
-      order,
     });
   } catch (error) {
     console.error("Error updating order:", error);

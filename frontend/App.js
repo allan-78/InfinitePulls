@@ -68,7 +68,7 @@ export default function App() {
     // Handle app state changes
     const subscription = AppState.addEventListener(
       "change",
-      handleAppStateChange,
+      handleAppStateChange
     );
 
     // Cleanup on unmount
@@ -82,7 +82,7 @@ export default function App() {
     try {
       if (Platform.OS === "android" && Constants.appOwnership === "expo") {
         console.log(
-          "Skipping remote push notification setup in Expo Go on Android.",
+          "Skipping remote push notification setup in Expo Go on Android."
         );
         return;
       }
@@ -178,7 +178,11 @@ export default function App() {
           });
         }, 500);
       }
-    } else if (data && data.type === "discount" && data.productId) {
+    } else if (
+      data &&
+      (data.type === "discount" || data.type === "PROMO_DISCOUNT") &&
+      data.productId
+    ) {
       // Navigate to product details
       if (navigationRef.current) {
         setTimeout(() => {

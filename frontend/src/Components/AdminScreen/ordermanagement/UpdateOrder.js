@@ -189,11 +189,8 @@ export default function UpdateOrderScreen({ route, navigation }) {
           <View style={styles.noteCard}>
             <Icon name="info" size={18} color={adminColors.accentSoft} />
             <Text style={styles.noteText}>
-              Updating the order status triggers the buyer notification flow and
-              email update.
-              {selectedStatus === "Delivered"
-                ? " Delivered orders also generate the receipt flow."
-                : ""}
+              Updating the order status sends a push notification directly to
+              the buyer's phone.
             </Text>
           </View>
         </View>
@@ -362,7 +359,7 @@ export default function UpdateOrderScreen({ route, navigation }) {
               </View>
 
               <Text style={styles.confirmNote}>
-                The buyer notification and email update will be triggered after
+                The buyer's phone notification will be triggered after
                 confirmation.
               </Text>
 
@@ -410,8 +407,8 @@ export default function UpdateOrderScreen({ route, navigation }) {
               </View>
               <Text style={styles.successTitle}>Status updated</Text>
               <Text style={styles.successDescription}>
-                The order is now marked as {selectedStatus}. Buyer notification
-                and email updates have been triggered.
+                The order is now marked as {selectedStatus}. The buyer phone
+                notification has been queued.
               </Text>
 
               <View style={styles.confirmStatusRow}>

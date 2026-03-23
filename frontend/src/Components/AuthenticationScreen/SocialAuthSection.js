@@ -67,9 +67,12 @@ function GoogleSocialButton({ busyProvider, setBusyProvider }) {
 
     GoogleSignin.configure({
       webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || undefined,
+      androidClientId:
+        process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || undefined,
       iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || undefined,
       offlineAccess: false,
       profileImageSize: 120,
+      scopes: ["profile", "email"],
     });
   }, []);
 
@@ -97,8 +100,9 @@ function GoogleSocialButton({ busyProvider, setBusyProvider }) {
             showPlayServicesUpdateDialog: true,
           });
           const response = await GoogleSignin.signIn();
+          const idToken = response?.data?.idToken || response?.idToken || null;
 
-          if (response?.type !== "success") {
+          if (!idToken) {
             return;
           }
 
@@ -106,13 +110,6 @@ function GoogleSocialButton({ busyProvider, setBusyProvider }) {
           if (!auth) {
             throw new Error(
               "Firebase authentication is not available in this runtime."
-            );
-          }
-
-          const { idToken } = response.data || {};
-          if (!idToken) {
-            throw new Error(
-              "Google did not return an ID token. Check the web client ID and Google project setup."
             );
           }
 
