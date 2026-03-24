@@ -9,11 +9,37 @@ const { sendMultiplePushNotifications } = require("../utils/pushNotification");
 const User = require("../models/User");
 
 const getPreferredPushTargets = (user) => {
-  if (!user?.pushToken) {
-    return [];
+  const pushTokens = [
+    ...(Array.isArray(user?.pushTokens)
+      ? user.pushTokens.filter((entry) => entry?.token)
+      : []),
+    ...(!user?.pushToken ||
+    (Array.isArray(user?.pushTokens) &&
+      user.pushTokens.some((entry) => entry?.token === user.pushToken))
+      ? []
+      : [
+          {
+            token: user.pushToken,
+            source: user.pushTokenSource || "unknown",
+          },
+        ]),
+  ];
+
+  const nativeTokens = pushTokens
+    .filter((entry) => entry.source && entry.source !== "expo-go")
+    .map((entry) => entry.token);
+
+  if (nativeTokens.length) {
+    return [...new Set(nativeTokens)];
   }
 
-  return [user.pushToken];
+  const fallbackTokens = pushTokens.map((entry) => entry.token);
+
+  if (fallbackTokens.length) {
+    return [...new Set(fallbackTokens)];
+  }
+
+  return user?.pushToken ? [user.pushToken] : [];
 };
 
 const safeUnlink = (path) => {
@@ -112,9 +138,12 @@ const notifyDiscountDrop = async (product) => {
       );
 
     const users = await User.find({
-      pushToken: { $exists: true, $ne: null },
       isActive: true,
-    }).select("+pushToken +pushTokenSource");
+      $or: [
+        { pushToken: { $exists: true, $ne: null } },
+        { "pushTokens.0": { $exists: true } },
+      ],
+    }).select("+pushToken +pushTokenSource +pushTokens");
 
     const title = "New Card Deal Dropped";
     const body = `${product.name} is now ${discountPercent}% OFF for PHP ${product.discountedPrice}`;

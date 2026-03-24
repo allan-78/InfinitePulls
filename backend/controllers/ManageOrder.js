@@ -4,11 +4,37 @@ const User = require("../models/User");
 const { sendMultiplePushNotifications } = require("../utils/pushNotification");
 
 const getPreferredPushTargets = (user) => {
-  if (!user?.pushToken) {
-    return [];
+  const pushTokens = [
+    ...(Array.isArray(user?.pushTokens)
+      ? user.pushTokens.filter((entry) => entry?.token)
+      : []),
+    ...(!user?.pushToken ||
+    (Array.isArray(user?.pushTokens) &&
+      user.pushTokens.some((entry) => entry?.token === user.pushToken))
+      ? []
+      : [
+          {
+            token: user.pushToken,
+            source: user.pushTokenSource || "unknown",
+          },
+        ]),
+  ];
+
+  const nativeTokens = pushTokens
+    .filter((entry) => entry.source && entry.source !== "expo-go")
+    .map((entry) => entry.token);
+
+  if (nativeTokens.length) {
+    return [...new Set(nativeTokens)];
   }
 
-  return [user.pushToken];
+  const fallbackTokens = pushTokens.map((entry) => entry.token);
+
+  if (fallbackTokens.length) {
+    return [...new Set(fallbackTokens)];
+  }
+
+  return user?.pushToken ? [user.pushToken] : [];
 };
 
 // 🟢 Get all orders (Admin)
@@ -75,7 +101,7 @@ exports.updateOrderStatus = async (req, res) => {
     const order = await Order.findById(id)
       .populate({
         path: "user",
-        select: "name email +pushToken +pushTokenSource",
+        select: "name email +pushToken +pushTokenSource +pushTokens",
       })
       .populate("orderItems.product", "name");
 
@@ -125,12 +151,13 @@ exports.updateOrderStatus = async (req, res) => {
           `📱 Attempting to send push notification for order #${order._id}`,
         );
 
-        let notificationBody = `Your order #${order._id.toString().slice(-8)} status changed to ${status}`;
+        const displayOrderId = order.orderNumber || order._id.toString().slice(-8);
+        let notificationBody = `Your order #${displayOrderId} status changed to ${status}`;
 
         const notificationData = {
           type: "ORDER_STATUS_UPDATE",
           orderId: order._id.toString(),
-          orderNumber: order._id.toString().slice(-8),
+          orderNumber: displayOrderId,
           status,
           oldStatus,
           timestamp: new Date().toISOString(),
@@ -154,7 +181,7 @@ exports.updateOrderStatus = async (req, res) => {
         };
 
         if (status === "Delivered") {
-          notificationBody = `🎉 Your order #${order._id.toString().slice(-8)} has been delivered.`;
+          notificationBody = `🎉 Your order #${displayOrderId} has been delivered.`;
         }
 
         const targets = getPreferredPushTargets(order.user);

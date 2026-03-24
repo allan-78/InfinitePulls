@@ -47,7 +47,9 @@ const OrderItem = ({ item, onPress }) => {
       <View style={styles.orderHeader}>
         <View style={styles.orderHeaderLeft}>
           <Icon name="shopping-bag" size={18} color={authColors.accentSoft} />
-          <Text style={styles.orderId}>Order #{item._id.slice(-8).toUpperCase()}</Text>
+          <Text style={styles.orderId}>
+            Order #{item.orderNumber || item._id.slice(-8).toUpperCase()}
+          </Text>
         </View>
         <View style={[styles.statusBadge, { backgroundColor: statusColor + '20' }]}>
           <View style={[styles.statusDot, { backgroundColor: statusColor }]} />

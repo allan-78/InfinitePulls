@@ -776,10 +776,74 @@ exports.verifyEmail = async (req, res) => {
   }
 };
 
+const sanitizePushTokens = (pushTokens = []) =>
+  pushTokens
+    .filter((entry) => entry?.token)
+    .map((entry) => ({
+      token: entry.token,
+      source: entry.source || "unknown",
+      platform: entry.platform || null,
+      applicationId: entry.applicationId || null,
+      updatedAt: entry.updatedAt ? new Date(entry.updatedAt) : new Date(),
+    }));
+
+const getUnifiedPushTokens = (user) => {
+  const pushTokens = sanitizePushTokens(user?.pushTokens || []);
+
+  if (
+    user?.pushToken &&
+    !pushTokens.some((entry) => entry.token === user.pushToken)
+  ) {
+    pushTokens.push({
+      token: user.pushToken,
+      source: user.pushTokenSource || "unknown",
+      updatedAt: user.pushTokenUpdatedAt || new Date(),
+    });
+  }
+
+  return pushTokens;
+};
+
+const choosePreferredPushToken = (pushTokens = []) => {
+  const normalized = sanitizePushTokens(pushTokens).sort(
+    (left, right) => new Date(right.updatedAt) - new Date(left.updatedAt),
+  );
+
+  const nativeTokens = normalized.filter(
+    (entry) => entry.source && entry.source !== "expo-go",
+  );
+
+  if (nativeTokens.length) {
+    return nativeTokens[0];
+  }
+
+  return normalized[0] || null;
+};
+
+const syncLegacyPushTokenFields = (user) => {
+  const preferredToken = choosePreferredPushToken(getUnifiedPushTokens(user));
+
+  user.pushToken = preferredToken?.token || null;
+  user.pushTokenSource = preferredToken?.source || null;
+  user.pushTokenUpdatedAt = preferredToken?.updatedAt || null;
+};
+
+const buildPushTokenPayload = (user) => ({
+  pushToken: user?.pushToken || null,
+  pushTokenSource: user?.pushTokenSource || null,
+  pushTokenUpdatedAt: user?.pushTokenUpdatedAt || null,
+  pushTokens: getUnifiedPushTokens(user),
+});
+
 // ========== SAVE PUSH TOKEN ==========
 exports.savePushToken = async (req, res) => {
   try {
-    const { pushToken, source = "unknown" } = req.body;
+    const {
+      pushToken,
+      source = "unknown",
+      platform = null,
+      applicationId = null,
+    } = req.body;
     const userId = req.user.id;
 
     console.log("📱 Saving push token for user:", userId);
@@ -805,7 +869,7 @@ exports.savePushToken = async (req, res) => {
     }
 
     const existingUser = await User.findById(userId).select(
-      "+pushToken +pushTokenSource +pushTokenUpdatedAt",
+      "+pushToken +pushTokenSource +pushTokenUpdatedAt +pushTokens",
     );
 
     if (!existingUser) {
@@ -815,28 +879,21 @@ exports.savePushToken = async (req, res) => {
       });
     }
 
-    const hasNativeTokenAlready =
-      existingUser.pushToken &&
-      existingUser.pushTokenSource &&
-      existingUser.pushTokenSource !== "expo-go";
+    const currentPushTokens = getUnifiedPushTokens(existingUser);
+    const filteredPushTokens = currentPushTokens.filter(
+      (entry) => entry.token !== pushToken,
+    );
 
-    if (
-      source === "expo-go" &&
-      hasNativeTokenAlready &&
-      existingUser.pushToken !== pushToken
-    ) {
-      return res.status(200).json({
-        success: true,
-        message:
-          "Native app push token already registered. Expo Go token ignored.",
-        token: existingUser.pushToken,
-        source: existingUser.pushTokenSource,
-      });
-    }
+    filteredPushTokens.push({
+      token: pushToken,
+      source,
+      platform,
+      applicationId,
+      updatedAt: new Date(),
+    });
 
-    existingUser.pushToken = pushToken;
-    existingUser.pushTokenSource = source;
-    existingUser.pushTokenUpdatedAt = new Date();
+    existingUser.pushTokens = filteredPushTokens;
+    syncLegacyPushTokenFields(existingUser);
     await existingUser.save({ validateBeforeSave: false });
 
     console.log(`✅ Push token saved for user: ${userId}`);
@@ -852,6 +909,7 @@ exports.savePushToken = async (req, res) => {
       message: "Push notification token saved successfully",
       token: existingUser.pushToken,
       source: existingUser.pushTokenSource,
+      pushTokens: buildPushTokenPayload(existingUser).pushTokens,
     });
   } catch (error) {
     console.error("❌ Error saving push token:", error);
@@ -868,14 +926,12 @@ exports.getPushToken = async (req, res) => {
   try {
     const userId = req.user.id;
     const user = await User.findById(userId).select(
-      "+pushToken +pushTokenSource +pushTokenUpdatedAt",
+      "+pushToken +pushTokenSource +pushTokenUpdatedAt +pushTokens",
     );
 
     res.status(200).json({
       success: true,
-      pushToken: user?.pushToken || null,
-      pushTokenSource: user?.pushTokenSource || null,
-      pushTokenUpdatedAt: user?.pushTokenUpdatedAt || null,
+      ...buildPushTokenPayload(user),
     });
   } catch (error) {
     console.error("❌ Error getting push token:", error);
@@ -892,7 +948,7 @@ exports.removePushToken = async (req, res) => {
     const userId = req.user.id;
     const { pushToken } = req.body || {};
     const user = await User.findById(userId).select(
-      "+pushToken +pushTokenSource +pushTokenUpdatedAt",
+      "+pushToken +pushTokenSource +pushTokenUpdatedAt +pushTokens",
     );
 
     if (!user) {
@@ -902,17 +958,17 @@ exports.removePushToken = async (req, res) => {
       });
     }
 
-    if (pushToken && user.pushToken && user.pushToken !== pushToken) {
-      return res.status(200).json({
-        success: true,
-        message:
-          "Stored push token belongs to another app session. No change made.",
-      });
+    const currentPushTokens = getUnifiedPushTokens(user);
+
+    if (pushToken) {
+      user.pushTokens = currentPushTokens.filter(
+        (entry) => entry.token !== pushToken,
+      );
+    } else {
+      user.pushTokens = [];
     }
 
-    user.pushToken = null;
-    user.pushTokenSource = null;
-    user.pushTokenUpdatedAt = null;
+    syncLegacyPushTokenFields(user);
     await user.save({ validateBeforeSave: false });
 
     console.log(`✅ Push token removed for user: ${userId}`);
@@ -920,6 +976,7 @@ exports.removePushToken = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Push notification token removed successfully",
+      ...buildPushTokenPayload(user),
     });
   } catch (error) {
     console.error("❌ Error removing push token:", error);

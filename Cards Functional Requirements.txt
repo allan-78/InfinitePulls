@@ -1,0 +1,111 @@
+________________________________________
+Project Requirements: Trading Card Ecommerce Application
+Version: 1.0
+Date: February 12, 2026
+Platform: Expo / React Native (iOS & Android)
+Members: 
+•	Monforte, Allan Roi P. 
+•	Ego, Ianzae Ryan P. 
+•	Cortez, Drew.
+
+1. Executive Summary
+This project outlines the development of a mobile ecommerce application dedicated to buying and selling trading cards (Sports, Pokémon, Magic: The Gathering, etc.). The application will utilize a cross-platform architecture to provide a seamless marketplace experience for users and robust management tools for administrators.
+2. User Roles
+•	Regular User: Can browse, buy, and sell trading cards.
+•	Admin: Can manage users, listings, transactions, and oversee the platform.
+________________________________________
+3. Functional Requirements
+3.1 Authentication & User Management
+•	F-001 User Registration: Users can register with email and password.
+•	F-002 User Login: Users can log in with email and password.
+•	F-003 Password Reset: Users can reset their password via email link.
+•	F-004 User Profile: Users can view and edit their profile (name, avatar, bio).
+•	F-005 Social Login: Users can login with Google or Apple (Optional).
+3.2 Admin Features
+•	F-006 Admin Dashboard: View platform statistics (total users, listings, sales).
+•	F-007 User Management: View, suspend, or delete user accounts.
+•	F-008 Listing Management: View, edit, or remove inappropriate listings.
+•	F-009 Transaction Overview: View all transactions and order details.
+•	F-010 Access Control: Separate login and elevated permissions for Admins.
+3.3 Card Catalog & Listings
+•	F-011 Browse Cards: Users can browse all available trading cards.
+•	F-012 Card Details: View details (name, description, price, condition, images).
+•	F-013 Create Listing: Sellers can create listings with photos, price, and description.
+•	F-014 Edit Listing: Sellers can edit or delete their own listings.
+•	F-015 Card Categories: Cards organized by type (Sports, Pokemon, MTG, etc.).
+•	F-016 Card Condition: Listings show condition (Mint, Near Mint, Good, Fair, Poor).
+3.4 Search & Filter
+•	F-017 Search Cards: Users can search cards by name or description.
+•	F-018 Filter by Category: Users can filter cards by category/type.
+•	F-019 Filter by Price: Users can filter by price range.
+•	F-020 Sort Results: Sort by price (low/high) or date listed.
+3.5 Shopping Cart
+•	F-021 Add to Cart: Users can add cards to the shopping cart.
+•	F-022 View Cart: View all items in the cart with the total price.
+•	F-023 Update Cart: Change quantity or remove items from the cart.
+•	F-024 Cart Persistence: Cart items are saved even after logout.
+3.6 Checkout & Payment
+•	F-025 Checkout Process: Proceed to checkout from the cart.
+•	F-026 Shipping Address: Enter or select shipping address.
+•	F-027 Payment Method: Enter payment details (card info).
+•	F-028 Order Summary: View summary before confirming purchase.
+•	F-029 Order Confirmation: Receive confirmation after successful purchase.
+3.7 Order Management
+•	F-030 Order History: Users can view their purchase history.
+•	F-031 Order Details: View details of each order (items, price, status).
+•	F-032 Order Status: Show status (Pending, Processing, Shipped, Delivered).
+•	F-033 Seller Orders: Sellers can view orders for items they sold.
+•	F-034 Update Status: Sellers can update the shipping status of their orders.
+3.8 Favorites & Notifications
+•	F-035 Add to Favorites: Users can add cards to a wishlist.
+•	F-036 View Favorites: View all saved favorite cards.
+•	F-037 Remove Favorites: Remove cards from favorites.
+•	F-038 Order Notifications: Receive notifications for order updates.
+•	F-039 Message Notifications: Notified when receiving messages.
+•	F-040 Push Notifications: App sends push notifications for important events.
+________________________________________
+4. Non-Functional Requirements
+4.1 Performance & Reliability
+•	NF-001 App Load Time: Launch within 3 seconds.
+•	NF-002 Screen Navigation: Transitions under 1 second.
+•	NF-003 Image Loading: Images must load progressively.
+•	NF-004 Search Speed: Results appear within 2 seconds.
+•	NF-018 Stability: App must not crash during normal use.
+•	NF-019 Error Handling: Handle errors gracefully.
+•	NF-021 Offline Handling: Show appropriate messaging when offline.
+4.2 Security
+•	NF-005 Password Security: Passwords must be encrypted and hashed.
+•	NF-006 Secure API: All API calls must use HTTPS/SSL.
+•	NF-007 Data Protection: User data must be stored securely.
+•	NF-008 Payment Security: Processing must be PCI compliant.
+•	NF-009 Session Management: Sessions expire after inactivity.
+•	NF-020 Data Backup: User data backed up regularly.
+4.3 Usability & Compatibility
+•	NF-010 Interface: Clean, intuitive UI.
+•	NF-011 Responsive: Functional on different screen sizes.
+•	NF-012 Error Messages: Clear feedback for user actions.
+•	NF-013 Navigation: Easy navigation between screens.
+•	NF-015 iOS Support: iOS 13 and above.
+•	NF-016 Android Support: Android 8.0 and above.
+•	NF-017 Network: Support for WiFi and mobile data (3G/4G/5G).
+________________________________________
+5. Technology Stack
+Frontend (Mobile)
+•	Framework: Expo / React Native
+•	State Mgmt: Context API or Redux Toolkit
+•	Navigation: React Navigation
+•	UI Library: React Native Paper or Native Base
+•	Forms: React Hook Form
+•	Media: Expo Image Picker
+Backend
+•	Server: Node.js + Express OR Firebase
+•	Database: sqLite, MongoDB, or Firestore
+•	Auth: JWT or Firebase Auth
+•	Storage: SQlite, Firebase, or Cloudinary, MongoDB
+•	Payments: Not yet Implemented. 
+•	Email: Nodemailer
++1
+Project Statistics: 40 Functional Features, 21 Non-Functional Requirements. 
+
+
+

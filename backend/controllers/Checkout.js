@@ -121,6 +121,9 @@ exports.checkout = async (req, res) => {
     const taxPrice = itemsPrice * TAX_RATE;
     const totalPrice = itemsPrice + taxPrice + SHIPPING_PRICE;
 
+    // Generate unique order number
+    const orderNumber = `ORD-${Date.now().toString().slice(-6)}-${Math.floor(1000 + Math.random() * 9000)}`;
+
     // Create order
     const order = await Order.create({
       user: userId,
@@ -131,6 +134,7 @@ exports.checkout = async (req, res) => {
       shippingPrice: SHIPPING_PRICE,
       totalPrice,
       orderStatus: "Processing",
+      orderNumber,
       paidAt: Date.now(),
       createdAt: Date.now(),
     });
@@ -231,6 +235,9 @@ exports.soloCheckout = async (req, res) => {
     const taxPrice = itemsPrice * TAX_RATE;
     const totalPrice = itemsPrice + taxPrice + SHIPPING_PRICE;
 
+    // Generate unique order number
+    const orderNumber = `ORD-${Date.now().toString().slice(-6)}-${Math.floor(1000 + Math.random() * 9000)}`;
+
     // Ensure image is a string (use empty string if no image)
     const imageUrl = product.images && product.images.length > 0 && product.images[0].url 
       ? product.images[0].url 
@@ -255,6 +262,7 @@ exports.soloCheckout = async (req, res) => {
       shippingPrice: SHIPPING_PRICE,
       totalPrice,
       orderStatus: "Processing",
+      orderNumber,
       paidAt: Date.now(),
       createdAt: Date.now(),
     });

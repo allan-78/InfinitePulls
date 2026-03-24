@@ -101,6 +101,34 @@ const userSchema = new mongoose.Schema({
     default: null,
     select: false,
   },
+  pushTokens: {
+    type: [
+      {
+        token: {
+          type: String,
+          required: true,
+        },
+        source: {
+          type: String,
+          default: "unknown",
+        },
+        platform: {
+          type: String,
+          default: null,
+        },
+        applicationId: {
+          type: String,
+          default: null,
+        },
+        updatedAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
+    default: [],
+    select: false,
+  },
 
   // ADDED: Firebase Authentication Fields
   firebaseUID: {

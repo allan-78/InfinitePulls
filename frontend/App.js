@@ -2,12 +2,15 @@
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useRef, useState } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { Platform, Alert, AppState } from "react-native";
+import { Platform, AppState } from "react-native";
 import Constants from "expo-constants";
 import * as Notifications from "expo-notifications";
 import AppNavigator from "./src/Components/Navigation/AppNavigator";
 import { getToken } from "./src/utils/helper";
-import { registerForPushNotificationsAsync } from "./src/hooks/usePushNotifications";
+import {
+  appendInAppNotification,
+  registerForPushNotificationsAsync,
+} from "./src/hooks/usePushNotifications";
 import * as SplashScreen from "expo-splash-screen";
 import * as Font from "expo-font";
 import {
@@ -23,7 +26,7 @@ import store from "./src/redux/store";
 // Configure notification handler for foreground
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
+    shouldShowAlert: false,
     shouldPlaySound: true,
     shouldSetBadge: true,
   }),
@@ -142,18 +145,18 @@ export default function App() {
     notificationListener.current =
       Notifications.addNotificationReceivedListener((notification) => {
         console.log("🔔 Notification received in foreground:", notification);
-
-        // Optional: Show an alert when notification is received in foreground
-        const { title, body } = notification.request.content;
-        if (title && body) {
-          Alert.alert(title, body, [{ text: "OK" }], { cancelable: true });
-        }
+        appendInAppNotification(notification).catch((error) => {
+          console.warn("Failed to save in-app notification:", error);
+        });
       });
 
     // Listener for user tapping on notification
     responseListener.current =
       Notifications.addNotificationResponseReceivedListener((response) => {
         console.log("👆 Notification tapped:", response);
+        appendInAppNotification(response.notification).catch((error) => {
+          console.warn("Failed to save tapped notification:", error);
+        });
         handleNotificationResponse(response);
       });
   };
@@ -215,6 +218,7 @@ export default function App() {
       try {
         const response = await Notifications.getLastNotificationResponseAsync();
         if (response?.notification) {
+          await appendInAppNotification(response.notification);
           handleNotificationResponse(response);
         }
       } catch (error) {

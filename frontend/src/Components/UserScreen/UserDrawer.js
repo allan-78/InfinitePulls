@@ -353,11 +353,25 @@ const UserDrawer = ({
             </Text>
           </View>
 
-          {topBarRight ? (
-            <View style={styles.topBarRight}>{topBarRight}</View>
-          ) : (
-            <View style={styles.topBarSideSpacer} />
-          )}
+          <View style={styles.topBarActions}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => navigation.navigate("OrderNotification")}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name="notifications-outline"
+                size={22}
+                color={authColors.textPrimary}
+              />
+              <View style={styles.badge} />
+            </TouchableOpacity>
+            {topBarRight ? (
+              <View style={styles.topBarRight}>{topBarRight}</View>
+            ) : (
+              <View style={styles.topBarSideSpacer} />
+            )}
+          </View>
         </View>
 
         <View style={styles.childContent}>{children}</View>
@@ -713,6 +727,31 @@ const styles = StyleSheet.create({
     minHeight: 44,
     alignItems: "flex-end",
     justifyContent: "center",
+  },
+  topBarActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  actionButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(199, 104, 91, 0.12)",
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+  },
+  badge: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: authColors.sparkle,
+    borderWidth: 1.5,
+    borderColor: authColors.background,
   },
   brandWrap: {
     alignItems: "center",

@@ -578,7 +578,9 @@ export default function OrderDetails({ navigation, route }) {
               </TouchableOpacity>
               <View style={styles.headerTextContainer}>
                 <Text style={styles.headerTitle}>Order Details</Text>
-                <Text style={styles.orderId}>#{order._id?.slice(-8).toUpperCase()}</Text>
+                <Text style={styles.orderId}>
+                  #{order.orderNumber || order._id?.slice(-8).toUpperCase()}
+                </Text>
               </View>
               <View style={styles.statusBadge}>
                 <View style={[styles.statusDot, { backgroundColor: STATUS_COLORS[order.orderStatus] || authColors.textMuted }]} />

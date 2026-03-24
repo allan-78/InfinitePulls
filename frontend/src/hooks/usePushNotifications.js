@@ -10,6 +10,143 @@ import { getToken } from "../utils/helper";
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 export const DEVICE_PUSH_TOKEN_KEY = "@infinitepulls_device_push_token";
+export const IN_APP_NOTIFICATIONS_KEY = "@infinitepulls_notifications_v2";
+export const LEGACY_NOTIFICATIONS_KEY = "@order_notifications";
+
+export function normalizeStoredNotification(notification) {
+  if (!notification) return null;
+
+  if (notification.id && notification.title && notification.date) {
+    return notification;
+  }
+
+  const content = notification.request?.content || notification.content || {};
+  const data = content.data || notification.data || {};
+
+  return {
+    id:
+      notification.request?.identifier ||
+      `${data.type || "notif"}-${data.orderId || data.productId || Date.now()}`,
+    title: content.title || "Notification",
+    body: content.body || "You have a new update.",
+    data,
+    date: notification.date || new Date().toISOString(),
+  };
+}
+
+export function dedupeStoredNotifications(items = []) {
+  const seen = new Set();
+
+  return items.filter((item) => {
+    const key = `${item.id}-${item.data?.orderId || ""}-${item.data?.productId || ""}-${item.title}`;
+
+    if (seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+    return true;
+  });
+}
+
+export async function getStoredInAppNotifications() {
+  try {
+    const [saved, legacySaved] = await Promise.all([
+      AsyncStorage.getItem(IN_APP_NOTIFICATIONS_KEY),
+      AsyncStorage.getItem(LEGACY_NOTIFICATIONS_KEY),
+    ]);
+
+    const parsed = [
+      ...(saved ? JSON.parse(saved) : []),
+      ...(legacySaved ? JSON.parse(legacySaved) : []),
+    ];
+
+    return dedupeStoredNotifications(
+      parsed.map(normalizeStoredNotification).filter(Boolean),
+    ).slice(0, 50);
+  } catch (error) {
+    return [];
+  }
+}
+
+export async function storeInAppNotifications(items = []) {
+  const normalized = dedupeStoredNotifications(
+    items.map(normalizeStoredNotification).filter(Boolean),
+  ).slice(0, 50);
+
+  await AsyncStorage.setItem(
+    IN_APP_NOTIFICATIONS_KEY,
+    JSON.stringify(normalized),
+  );
+
+  return normalized;
+}
+
+export async function appendInAppNotification(notification) {
+  const normalized = normalizeStoredNotification(notification);
+
+  if (!normalized) {
+    return getStoredInAppNotifications();
+  }
+
+  const current = await getStoredInAppNotifications();
+  const updated = dedupeStoredNotifications([normalized, ...current]).slice(
+    0,
+    50,
+  );
+
+  await AsyncStorage.setItem(
+    IN_APP_NOTIFICATIONS_KEY,
+    JSON.stringify(updated),
+  );
+
+  return updated;
+}
+
+export async function clearStoredInAppNotifications() {
+  await AsyncStorage.multiRemove([
+    IN_APP_NOTIFICATIONS_KEY,
+    LEGACY_NOTIFICATIONS_KEY,
+  ]);
+  return [];
+}
+
+export async function getBackendPushRegistrationStatus() {
+  try {
+    const authToken = await getToken();
+
+    if (!authToken) {
+      return {
+        saved: false,
+        pushToken: null,
+        pushTokens: [],
+        pushTokenSource: null,
+      };
+    }
+
+    const response = await axios.get(`${BACKEND_URL}/api/v1/users/push-token`, {
+      headers: { Authorization: `Bearer ${authToken}` },
+    });
+
+    const pushTokens = Array.isArray(response.data?.pushTokens)
+      ? response.data.pushTokens
+      : [];
+
+    return {
+      saved: Boolean(response.data?.pushToken || pushTokens.length),
+      pushToken: response.data?.pushToken || null,
+      pushTokens,
+      pushTokenSource: response.data?.pushTokenSource || null,
+    };
+  } catch (error) {
+    return {
+      saved: false,
+      pushToken: null,
+      pushTokens: [],
+      pushTokenSource: null,
+    };
+  }
+}
 
 export async function getStoredDevicePushToken() {
   try {
@@ -142,12 +279,14 @@ export async function registerForPushNotificationsAsync() {
     // Step 7: Save to backend
     console.log("Step 7: Saving token to backend...");
     const backendUrl = `${BACKEND_URL}/api/v1/users/push-token`;
+    const pushSource =
+      Constants.appOwnership === "expo" ? "expo-go" : "native-app";
 
     const response = await axios.post(
       backendUrl,
       {
         pushToken: token,
-        source: Constants.appOwnership === "expo" ? "expo-go" : "native-app",
+        source: pushSource,
         platform: Platform.OS,
         applicationId: Application.applicationId || null,
       },
@@ -168,10 +307,22 @@ export async function registerForPushNotificationsAsync() {
       { headers: { Authorization: `Bearer ${currentAuthToken}` } },
     );
 
+    const savedTokens = Array.isArray(verifyResponse.data?.pushTokens)
+      ? verifyResponse.data.pushTokens
+      : [];
+    const tokenSaved =
+      verifyResponse.data?.pushToken === token ||
+      savedTokens.some((entry) => entry?.token === token);
+
     console.log(
       "Token in DB:",
-      verifyResponse.data.pushToken ? "✅ Present" : "❌ Missing",
+      tokenSaved ? "✅ Present" : "❌ Missing",
     );
+    console.log("Primary token source in DB:", verifyResponse.data?.pushTokenSource || "none");
+
+    if (!tokenSaved) {
+      throw new Error("Push token was not persisted on the backend");
+    }
 
     console.log("========== PUSH NOTIFICATION REGISTRATION END ==========");
     return token;

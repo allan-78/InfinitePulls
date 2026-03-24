@@ -1,0 +1,17 @@
+node_modules/
+.expo/
+dist/
+coverage/
+android/.gradle/
+android/.kotlin/
+android/build/
+android/app/build/
+android/.cxx/
+android/local.properties
+.env
+.env.*
+credentials.json
+credentials/
+*.log
+*.tmp
+.DS_Store

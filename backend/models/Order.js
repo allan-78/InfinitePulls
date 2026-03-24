@@ -41,6 +41,7 @@ const orderSchema = new mongoose.Schema({
     required: true,
     default: 'Processing',
   },
+  orderNumber: { type: String },
   deliveredAt: { type: Date },
   createdAt: { type: Date, default: Date.now },
 });

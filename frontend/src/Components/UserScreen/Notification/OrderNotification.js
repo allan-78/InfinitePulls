@@ -10,60 +10,35 @@ import {
   Image,
   Alert,
 } from 'react-native';
+import * as Application from 'expo-application';
+import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
 import axios from 'axios';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { authColors, authFonts } from '../../../theme/authTheme';
 import { getToken } from '../../../utils/helper';
-import { registerForPushNotificationsAsync } from '../../../hooks/usePushNotifications';
+import {
+  appendInAppNotification,
+  clearStoredInAppNotifications,
+  getBackendPushRegistrationStatus,
+  getStoredInAppNotifications,
+  getStoredDevicePushToken,
+  normalizeStoredNotification,
+  registerForPushNotificationsAsync,
+  storeInAppNotifications,
+} from '../../../hooks/usePushNotifications';
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
-const STORAGE_KEY = '@infinitepulls_notifications_v2';
-const LEGACY_STORAGE_KEY = '@order_notifications';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
+    shouldShowAlert: false,
     shouldPlaySound: true,
     shouldSetBadge: true,
   }),
 });
-
-const normalizeNotification = (notification) => {
-  if (!notification) return null;
-
-  if (notification.id && notification.title && notification.date) {
-    return notification;
-  }
-
-  const content = notification.request?.content || notification.content || {};
-  const data = content.data || notification.data || {};
-
-  return {
-    id:
-      notification.request?.identifier
-      || `${data.type || 'notif'}-${data.orderId || data.productId || Date.now()}`,
-    title: content.title || 'Notification',
-    body: content.body || 'You have a new update.',
-    data,
-    date: notification.date || new Date().toISOString(),
-  };
-};
-
-const dedupeNotifications = (items) => {
-  const seen = new Set();
-  return items.filter((item) => {
-    const key = `${item.id}-${item.data?.orderId || ''}-${item.data?.productId || ''}-${item.title}`;
-    if (seen.has(key)) {
-      return false;
-    }
-    seen.add(key);
-    return true;
-  });
-};
 
 export default function OrderNotification() {
   const navigation = useNavigation();
@@ -79,38 +54,82 @@ export default function OrderNotification() {
   const [pushTokenSaved, setPushTokenSaved] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [promoFeed, setPromoFeed] = useState({ newDiscounts: [], endingSoonDiscounts: [] });
+  const [pushDebugInfo, setPushDebugInfo] = useState({
+    permissionStatus: 'unknown',
+    localToken: null,
+    backendToken: null,
+    backendTokenSource: null,
+    backendTokenCount: 0,
+    matchedDeviceToken: false,
+    appOwnership: Constants.appOwnership || 'standalone',
+    applicationId: Application.applicationId || null,
+  });
 
   const persistNotifications = useCallback(async (items) => {
-    const normalized = dedupeNotifications(items.map(normalizeNotification).filter(Boolean)).slice(0, 50);
+    const normalized = await storeInAppNotifications(items);
     notificationsRef.current = normalized;
     setNotifications(normalized);
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
   }, []);
 
   const loadSavedNotifications = useCallback(async () => {
-    const [saved, legacySaved] = await Promise.all([
-      AsyncStorage.getItem(STORAGE_KEY),
-      AsyncStorage.getItem(LEGACY_STORAGE_KEY),
-    ]);
+    const savedNotifications = await getStoredInAppNotifications();
+    notificationsRef.current = savedNotifications;
+    setNotifications(savedNotifications);
+  }, []);
 
-    const parsed = [
-      ...(saved ? JSON.parse(saved) : []),
-      ...(legacySaved ? JSON.parse(legacySaved) : []),
-    ];
-
-    await persistNotifications(parsed);
-  }, [persistNotifications]);
+  const maskToken = useCallback((token) => {
+    if (!token) return 'Not saved';
+    if (token.length <= 26) return token;
+    return `${token.slice(0, 16)}...${token.slice(-8)}`;
+  }, []);
 
   const inferPushTokenStatus = useCallback(async () => {
     try {
       const authToken = await getToken();
       if (!authToken) {
         setPushTokenSaved(false);
+        setPushDebugInfo((current) => ({
+          ...current,
+          permissionStatus: 'signed-out',
+          localToken: null,
+          backendToken: null,
+          backendTokenSource: null,
+          backendTokenCount: 0,
+          matchedDeviceToken: false,
+        }));
         return;
       }
 
-      const permissions = await Notifications.getPermissionsAsync();
-      setPushTokenSaved(permissions.status === 'granted');
+      const [permissions, backendStatus, localToken] = await Promise.all([
+        Notifications.getPermissionsAsync(),
+        getBackendPushRegistrationStatus(),
+        getStoredDevicePushToken(),
+      ]);
+      const matchedDeviceToken = Boolean(
+        localToken &&
+        (
+          backendStatus.pushToken === localToken ||
+          backendStatus.pushTokens.some((entry) => entry?.token === localToken)
+        ),
+      );
+
+      setPushDebugInfo({
+        permissionStatus: permissions.status,
+        localToken,
+        backendToken: backendStatus.pushToken,
+        backendTokenSource: backendStatus.pushTokenSource,
+        backendTokenCount: backendStatus.pushTokens.length,
+        matchedDeviceToken,
+        appOwnership: Constants.appOwnership || 'standalone',
+        applicationId: Application.applicationId || null,
+      });
+
+      setPushTokenSaved(
+        permissions.status === 'granted' &&
+        Boolean(localToken) &&
+        matchedDeviceToken &&
+        backendStatus.saved,
+      );
     } catch (error) {
       setPushTokenSaved(false);
     }
@@ -157,13 +176,9 @@ export default function OrderNotification() {
   }, [navigation]);
 
   const appendNotification = useCallback(async (incomingNotification) => {
-    const normalized = normalizeNotification(incomingNotification);
-    if (!normalized) return;
-
-    const updated = dedupeNotifications([normalized, ...notificationsRef.current]).slice(0, 50);
+    const updated = await appendInAppNotification(incomingNotification);
     notificationsRef.current = updated;
     setNotifications(updated);
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
   }, []);
 
   const initializeScreen = useCallback(async () => {
@@ -194,7 +209,7 @@ export default function OrderNotification() {
     });
 
     responseListener.current = Notifications.addNotificationResponseReceivedListener(async (response) => {
-      const normalized = normalizeNotification(response.notification);
+      const normalized = normalizeStoredNotification(response.notification);
       await appendNotification(response.notification);
       handleNotificationOpen(normalized);
     });
@@ -222,17 +237,19 @@ export default function OrderNotification() {
       setRegistering(true);
       const token = await registerForPushNotificationsAsync();
       if (token) {
-        setPushTokenSaved(true);
+        await inferPushTokenStatus();
         Alert.alert('Notifications Enabled', 'Your device is now ready for order and promo updates.');
       } else {
+        await inferPushTokenStatus();
         Alert.alert('Setup Incomplete', 'Notification permission or token registration was not completed.');
       }
     } catch (error) {
+      await inferPushTokenStatus();
       Alert.alert('Error', 'Failed to register this device for notifications.');
     } finally {
       setRegistering(false);
     }
-  }, []);
+  }, [inferPushTokenStatus]);
 
   const clearNotifications = useCallback(() => {
     Alert.alert('Clear Notifications', 'Remove all saved notification history?', [
@@ -241,8 +258,9 @@ export default function OrderNotification() {
         text: 'Clear',
         style: 'destructive',
         onPress: async () => {
-          setNotifications([]);
-          await AsyncStorage.multiRemove([STORAGE_KEY, LEGACY_STORAGE_KEY]);
+          const cleared = await clearStoredInAppNotifications();
+          notificationsRef.current = cleared;
+          setNotifications(cleared);
         },
       },
     ]);
@@ -255,9 +273,11 @@ export default function OrderNotification() {
         text: 'Delete',
         style: 'destructive',
         onPress: async () => {
-          const updated = notifications.filter((item) => item.id !== id);
+          const updated = await storeInAppNotifications(
+            notifications.filter((item) => item.id !== id),
+          );
+          notificationsRef.current = updated;
           setNotifications(updated);
-          await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
         },
       },
     ]);
@@ -336,6 +356,23 @@ export default function OrderNotification() {
     </View>
   );
 
+  const renderDebugCard = () => (
+    <View style={styles.debugCard}>
+      <View style={styles.debugHeader}>
+        <Icon name="bug-report" size={18} color={authColors.sparkle} />
+        <Text style={styles.debugTitle}>Push Debug</Text>
+      </View>
+      <DebugRow label="App Mode" value={pushDebugInfo.appOwnership} />
+      <DebugRow label="Permission" value={pushDebugInfo.permissionStatus} />
+      <DebugRow label="Backend Source" value={pushDebugInfo.backendTokenSource || 'none'} />
+      <DebugRow label="Backend Tokens" value={String(pushDebugInfo.backendTokenCount)} />
+      <DebugRow label="APK Token Match" value={pushDebugInfo.matchedDeviceToken ? 'yes' : 'no'} />
+      <DebugRow label="App ID" value={pushDebugInfo.applicationId || 'unknown'} />
+      <DebugRow label="This Device Token" value={maskToken(pushDebugInfo.localToken)} multiline />
+      <DebugRow label="Primary Backend Token" value={maskToken(pushDebugInfo.backendToken)} multiline />
+    </View>
+  );
+
   const renderOrderCard = ({ item }) => (
     <TouchableOpacity
       style={styles.noticeCard}
@@ -355,7 +392,9 @@ export default function OrderNotification() {
         {item.data?.orderId ? (
           <View style={styles.noticeMetaPill}>
             <Icon name="receipt-long" size={13} color={authColors.textMuted} />
-            <Text style={styles.noticeMetaText}>Order #{item.data.orderId.slice(-8)}</Text>
+            <Text style={styles.noticeMetaText}>
+              Order #{item.data.orderNumber || item.data.orderId.slice(-8)}
+            </Text>
           </View>
         ) : null}
       </View>
@@ -513,6 +552,7 @@ export default function OrderNotification() {
         renderItem={() => (
           <View style={styles.content}>
             {renderStatusCard()}
+            {renderDebugCard()}
 
             <View style={styles.tabSwitch}>
               <TouchableOpacity
@@ -568,6 +608,20 @@ export default function OrderNotification() {
         }
       />
     </SafeAreaView>
+  );
+}
+
+function DebugRow({ label, value, multiline = false }) {
+  return (
+    <View style={[styles.debugRow, multiline && styles.debugRowStacked]}>
+      <Text style={styles.debugLabel}>{label}</Text>
+      <Text
+        style={[styles.debugValue, multiline && styles.debugValueMultiline]}
+        numberOfLines={multiline ? 3 : 1}
+      >
+        {value}
+      </Text>
+    </View>
   );
 }
 
@@ -638,6 +692,53 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     padding: 16,
     marginBottom: 16,
+  },
+  debugCard: {
+    backgroundColor: authColors.surface,
+    borderWidth: 1,
+    borderColor: authColors.surfaceBorder,
+    borderRadius: 22,
+    padding: 16,
+    marginBottom: 16,
+    gap: 10,
+  },
+  debugHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  debugTitle: {
+    color: authColors.textPrimary,
+    fontSize: 14,
+    fontFamily: authFonts.bold,
+  },
+  debugRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  debugRowStacked: {
+    alignItems: 'flex-start',
+    flexDirection: 'column',
+    gap: 4,
+  },
+  debugLabel: {
+    color: authColors.textMuted,
+    fontSize: 12,
+    fontFamily: authFonts.semibold,
+  },
+  debugValue: {
+    flex: 1,
+    textAlign: 'right',
+    color: authColors.textPrimary,
+    fontSize: 12,
+    fontFamily: authFonts.regular,
+  },
+  debugValueMultiline: {
+    textAlign: 'left',
+    width: '100%',
   },
   statusIconWrap: {
     width: 48,
