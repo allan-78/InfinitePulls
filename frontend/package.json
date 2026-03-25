@@ -16,11 +16,11 @@
   "dependencies": {
     "@expo-google-fonts/space-grotesk": "^0.3.0",
     "@expo-google-fonts/ultra": "^0.4.0",
-    "@react-native-async-storage/async-storage": "^1.24.0",
+    "@react-native-async-storage/async-storage": "1.24.0",
     "@react-native-community/datetimepicker": "8.4.4",
-    "@react-native-google-signin/google-signin": "^16.1.2",
+    "@react-native-google-signin/google-signin": "16.1.2",
     "@react-native-masked-view/masked-view": "0.3.2",
-    "@react-native-picker/picker": "^2.11.1",
+    "@react-native-picker/picker": "2.11.1",
     "@react-navigation/bottom-tabs": "^7.15.2",
     "@react-navigation/drawer": "^7.9.2",
     "@react-navigation/material-top-tabs": "^7.4.13",
@@ -70,7 +70,6 @@
   },
   "private": true,
   "devDependencies": {
-    "@react-native-community/cli": "^20.1.2",
-    "expo-module-scripts": "^55.0.2"
+    "@react-native-community/cli": "^20.1.2"
   }
 }
