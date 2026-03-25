@@ -14,11 +14,11 @@
       },
       "oauth_client": [
         {
-          "client_id": "311416409407-416cufgd7jq2abqmu2a3gb9mtnjeit1i.apps.googleusercontent.com",
+          "client_id": "311416409407-tf2g0k8f70ee6qu6fd99a03jn543b6j7.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.infinitepulls.app",
-            "certificate_hash": "1579e20be404ddc4e895fea46ceb24f25cf3a9cf"
+            "certificate_hash": "2f849d9bacf52c3ed46e2d7abc07f6d50d07ec01"
           }
         },
         {
