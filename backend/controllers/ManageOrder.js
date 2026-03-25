@@ -3,8 +3,19 @@ const Order = require("../models/Order");
 const User = require("../models/User");
 const { sendMultiplePushNotifications } = require("../utils/pushNotification");
 
+const EXPECTED_PROJECT_EXPERIENCE =
+  process.env.EXPO_PROJECT_EXPERIENCE ||
+  "@allanmonforte123s-organization/infinitepulls";
+
 const getPreferredPushTargets = (user) => {
   if (!user?.pushToken) {
+    return [];
+  }
+
+  if (
+    user.pushTokenProject &&
+    user.pushTokenProject !== EXPECTED_PROJECT_EXPERIENCE
+  ) {
     return [];
   }
 
@@ -75,7 +86,7 @@ exports.updateOrderStatus = async (req, res) => {
     const order = await Order.findById(id)
       .populate({
         path: "user",
-        select: "name email +pushToken +pushTokenSource",
+        select: "name email +pushToken +pushTokenSource +pushTokenProject",
       })
       .populate("orderItems.product", "name");
 

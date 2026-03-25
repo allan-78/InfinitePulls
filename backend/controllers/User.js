@@ -779,7 +779,12 @@ exports.verifyEmail = async (req, res) => {
 // ========== SAVE PUSH TOKEN ==========
 exports.savePushToken = async (req, res) => {
   try {
-    const { pushToken, source = "unknown" } = req.body;
+    const {
+      pushToken,
+      source = "unknown",
+      projectExperience = null,
+      applicationId = null,
+    } = req.body;
     const userId = req.user.id;
 
     console.log("📱 Saving push token for user:", userId);
@@ -837,6 +842,8 @@ exports.savePushToken = async (req, res) => {
     existingUser.pushToken = pushToken;
     existingUser.pushTokenSource = source;
     existingUser.pushTokenUpdatedAt = new Date();
+    existingUser.pushTokenProject = projectExperience;
+    existingUser.pushTokenApplicationId = applicationId;
     await existingUser.save({ validateBeforeSave: false });
 
     console.log(`✅ Push token saved for user: ${userId}`);
@@ -852,6 +859,7 @@ exports.savePushToken = async (req, res) => {
       message: "Push notification token saved successfully",
       token: existingUser.pushToken,
       source: existingUser.pushTokenSource,
+      projectExperience: existingUser.pushTokenProject,
     });
   } catch (error) {
     console.error("❌ Error saving push token:", error);
@@ -868,7 +876,7 @@ exports.getPushToken = async (req, res) => {
   try {
     const userId = req.user.id;
     const user = await User.findById(userId).select(
-      "+pushToken +pushTokenSource +pushTokenUpdatedAt",
+      "+pushToken +pushTokenSource +pushTokenUpdatedAt +pushTokenProject +pushTokenApplicationId",
     );
 
     res.status(200).json({
@@ -876,6 +884,8 @@ exports.getPushToken = async (req, res) => {
       pushToken: user?.pushToken || null,
       pushTokenSource: user?.pushTokenSource || null,
       pushTokenUpdatedAt: user?.pushTokenUpdatedAt || null,
+      pushTokenProject: user?.pushTokenProject || null,
+      pushTokenApplicationId: user?.pushTokenApplicationId || null,
     });
   } catch (error) {
     console.error("❌ Error getting push token:", error);
@@ -913,6 +923,8 @@ exports.removePushToken = async (req, res) => {
     user.pushToken = null;
     user.pushTokenSource = null;
     user.pushTokenUpdatedAt = null;
+    user.pushTokenProject = null;
+    user.pushTokenApplicationId = null;
     await user.save({ validateBeforeSave: false });
 
     console.log(`✅ Push token removed for user: ${userId}`);

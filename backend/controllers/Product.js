@@ -8,8 +8,19 @@ const {
 const { sendMultiplePushNotifications } = require("../utils/pushNotification");
 const User = require("../models/User");
 
+const EXPECTED_PROJECT_EXPERIENCE =
+  process.env.EXPO_PROJECT_EXPERIENCE ||
+  "@allanmonforte123s-organization/infinitepulls";
+
 const getPreferredPushTargets = (user) => {
   if (!user?.pushToken) {
+    return [];
+  }
+
+  if (
+    user.pushTokenProject &&
+    user.pushTokenProject !== EXPECTED_PROJECT_EXPERIENCE
+  ) {
     return [];
   }
 
@@ -114,7 +125,7 @@ const notifyDiscountDrop = async (product) => {
     const users = await User.find({
       pushToken: { $exists: true, $ne: null },
       isActive: true,
-    }).select("+pushToken +pushTokenSource");
+    }).select("+pushToken +pushTokenSource +pushTokenProject");
 
     const title = "New Card Deal Dropped";
     const body = `${product.name} is now ${discountPercent}% OFF for PHP ${product.discountedPrice}`;

@@ -10,6 +10,9 @@ import { getToken } from "../utils/helper";
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 export const DEVICE_PUSH_TOKEN_KEY = "@infinitepulls_device_push_token";
+const projectExperience = Constants.expoConfig?.owner && Constants.expoConfig?.slug
+  ? `@${Constants.expoConfig.owner}/${Constants.expoConfig.slug}`
+  : null;
 
 export async function getStoredDevicePushToken() {
   try {
@@ -150,6 +153,11 @@ export async function registerForPushNotificationsAsync() {
         source: Constants.appOwnership === "expo" ? "expo-go" : "native-app",
         platform: Platform.OS,
         applicationId: Application.applicationId || null,
+        projectExperience,
+        easProjectId:
+          Constants.expoConfig?.extra?.eas?.projectId ||
+          Constants.easConfig?.projectId ||
+          null,
       },
       {
         headers: {

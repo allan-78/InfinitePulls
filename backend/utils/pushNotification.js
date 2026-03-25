@@ -1,5 +1,6 @@
 // backend/utils/pushNotification.js
 const { Expo } = require('expo-server-sdk');
+const User = require('../models/User');
 
 // Create a new Expo SDK client
 const expo = new Expo();
@@ -92,6 +93,33 @@ exports.sendMultiplePushNotifications = async (messages) => {
         });
       } catch (error) {
         console.error('Error sending chunk:', error);
+        if (error.code === 'PUSH_TOO_MANY_EXPERIENCE_IDS' && error.details) {
+          const expectedExperience =
+            process.env.EXPO_PROJECT_EXPERIENCE ||
+            '@allanmonforte123s-organization/infinitepulls';
+          const staleTokens = Object.entries(error.details)
+            .filter(([experience]) => experience !== expectedExperience)
+            .flatMap(([, tokens]) => tokens || []);
+
+          if (staleTokens.length > 0) {
+            await User.updateMany(
+              { pushToken: { $in: staleTokens } },
+              {
+                $set: {
+                  pushToken: null,
+                  pushTokenSource: null,
+                  pushTokenUpdatedAt: null,
+                  pushTokenProject: null,
+                  pushTokenApplicationId: null,
+                },
+              }
+            );
+            console.error(
+              'Cleared stale push tokens from other Expo projects:',
+              staleTokens
+            );
+          }
+        }
         errors.push({ message: error.message || 'Chunk send failed' });
       }
     }
