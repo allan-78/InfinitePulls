@@ -164,7 +164,7 @@ exports.updateOrderStatus = async (req, res) => {
           return;
         }
 
-        await sendMultiplePushNotifications(
+        const pushResult = await sendMultiplePushNotifications(
           targets.map((token) => ({
             to: token,
             sound: "default",
@@ -176,8 +176,16 @@ exports.updateOrderStatus = async (req, res) => {
           })),
         );
 
+        if (pushResult.errorCount > 0 && pushResult.okCount === 0) {
+          console.error(
+            `❌ Push notification was accepted by no devices for order #${order._id}`,
+            pushResult.errors,
+          );
+          return;
+        }
+
         console.log(
-          `✅ Push notification sent successfully for order #${order._id}`,
+          `✅ Push notification queued for order #${order._id} (ok=${pushResult.okCount}, errors=${pushResult.errorCount})`,
         );
       } catch (pushError) {
         console.error("❌ Failed to send push notification:", pushError);

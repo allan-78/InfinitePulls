@@ -145,7 +145,16 @@ const notifyDiscountDrop = async (product) => {
       return;
     }
 
-    await sendMultiplePushNotifications(messages);
+    const pushResult = await sendMultiplePushNotifications(messages);
+
+    if (pushResult.errorCount > 0 && pushResult.okCount === 0) {
+      console.error("Discount notification tickets failed:", pushResult.errors);
+      return;
+    }
+
+    console.log(
+      `Promo push queued (ok=${pushResult.okCount}, errors=${pushResult.errorCount})`,
+    );
   } catch (error) {
     console.error("Discount notification error:", error.message);
   }

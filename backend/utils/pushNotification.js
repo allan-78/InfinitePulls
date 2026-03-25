@@ -68,23 +68,42 @@ exports.sendMultiplePushNotifications = async (messages) => {
     
     if (validMessages.length === 0) {
       console.log('No valid push tokens found');
-      return [];
+      return { tickets: [], okCount: 0, errorCount: 0, errors: [] };
     }
 
     // Send notifications in chunks (Expo recommends chunks of 100)
     const chunks = expo.chunkPushNotifications(validMessages);
     const tickets = [];
+    const errors = [];
 
     for (const chunk of chunks) {
       try {
         const ticketChunk = await expo.sendPushNotificationsAsync(chunk);
         tickets.push(...ticketChunk);
+
+        ticketChunk.forEach((ticket, index) => {
+          if (ticket.status === 'error') {
+            errors.push({
+              index,
+              details: ticket.details || null,
+              message: ticket.message || 'Unknown Expo push error',
+            });
+          }
+        });
       } catch (error) {
         console.error('Error sending chunk:', error);
+        errors.push({ message: error.message || 'Chunk send failed' });
       }
     }
 
-    return tickets;
+    const okCount = tickets.filter((ticket) => ticket.status === 'ok').length;
+    const errorCount = errors.length;
+
+    if (errorCount > 0) {
+      console.error('Expo push ticket errors:', JSON.stringify(errors, null, 2));
+    }
+
+    return { tickets, okCount, errorCount, errors };
   } catch (error) {
     console.error('Error sending multiple push notifications:', error);
     throw error;
